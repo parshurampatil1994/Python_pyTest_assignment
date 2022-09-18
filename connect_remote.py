@@ -1,4 +1,5 @@
 import paramiko
+import logging
 
 
 def connect_host():
@@ -18,6 +19,7 @@ def connect_host():
         with open('ParshuramVM.txt', 'w') as f:
             for i in stdout:
                 f.write(i)
+                logging.getLogger().info('info: ' + str(i))
 
         client.close()
 

@@ -1,10 +1,12 @@
 import pytest
+import logging
 
 
-def test_percent_disk():
-    """
-    """
-    # obj = connect_host()
+@pytest.mark.cli
+def test_disk(caplog):
+    caplog.set_level(logging.INFO)
+    logging.getLogger().info('Log inside a test_disk function!')
+
     with open('ParshuramVM.txt') as f:
         line = eval(f.read())
         disk_used_percent = line.get('disk_used_percent')

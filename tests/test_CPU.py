@@ -1,10 +1,12 @@
 import pytest
+import logging
 
 
-def test_percent_CPU():
-    """
-    """
-    # obj = connect_host()
+@pytest.mark.cli
+def test_CPU(caplog):
+    caplog.set_level(logging.INFO)
+    logging.getLogger().info('Log inside a test_CPU function!')
+
     with open('ParshuramVM.txt') as f:
         line = eval(f.read())
         cpu_usage = line.get('cpu_usage')
