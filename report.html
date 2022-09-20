@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>Test Report</title>
+    <style>body {
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 12px;
+  /* do not increase min-width as some may use split screens */
+  min-width: 800px;
+  color: #999;
+}
+
+h1 {
+  font-size: 24px;
+  color: black;
+}
+
+h2 {
+  font-size: 16px;
+  color: black;
+}
+
+p {
+  color: black;
+}
+
+a {
+  color: #999;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+/******************************
+ * SUMMARY INFORMATION
+ ******************************/
+#environment td {
+  padding: 5px;
+  border: 1px solid #E6E6E6;
+}
+#environment tr:nth-child(odd) {
+  background-color: #f6f6f6;
+}
+
+/******************************
+ * TEST RESULT COLORS
+ ******************************/
+span.passed,
+.passed .col-result {
+  color: green;
+}
+
+span.skipped,
+span.xfailed,
+span.rerun,
+.skipped .col-result,
+.xfailed .col-result,
+.rerun .col-result {
+  color: orange;
+}
+
+span.error,
+span.failed,
+span.xpassed,
+.error .col-result,
+.failed .col-result,
+.xpassed .col-result {
+  color: red;
+}
+
+/******************************
+ * RESULTS TABLE
+ *
+ * 1. Table Layout
+ * 2. Extra
+ * 3. Sorting items
+ *
+ ******************************/
+/*------------------
+ * 1. Table Layout
+ *------------------*/
+#results-table {
+  border: 1px solid #e6e6e6;
+  color: #999;
+  font-size: 12px;
+  width: 100%;
+}
+#results-table th,
+#results-table td {
+  padding: 5px;
+  border: 1px solid #E6E6E6;
+  text-align: left;
+}
+#results-table th {
+  font-weight: bold;
+}
+
+/*------------------
+ * 2. Extra
+ *------------------*/
+.log {
+  background-color: #e6e6e6;
+  border: 1px solid #e6e6e6;
+  color: black;
+  display: block;
+  font-family: "Courier New", Courier, monospace;
+  height: 230px;
+  overflow-y: scroll;
+  padding: 5px;
+  white-space: pre-wrap;
+}
+.log:only-child {
+  height: inherit;
+}
+
+div.image {
+  border: 1px solid #e6e6e6;
+  float: right;
+  height: 240px;
+  margin-left: 5px;
+  overflow: hidden;
+  width: 320px;
+}
+div.image img {
+  width: 320px;
+}
+
+div.video {
+  border: 1px solid #e6e6e6;
+  float: right;
+  height: 240px;
+  margin-left: 5px;
+  overflow: hidden;
+  width: 320px;
+}
+div.video video {
+  overflow: hidden;
+  width: 320px;
+  height: 240px;
+}
+
+.collapsed {
+  display: none;
+}
+
+.expander::after {
+  content: " (show details)";
+  color: #BBB;
+  font-style: italic;
+  cursor: pointer;
+}
+
+.collapser::after {
+  content: " (hide details)";
+  color: #BBB;
+  font-style: italic;
+  cursor: pointer;
+}
+
+/*------------------
+ * 3. Sorting items
+ *------------------*/
+.sortable {
+  cursor: pointer;
+}
+
+.sort-icon {
+  font-size: 0px;
+  float: left;
+  margin-right: 5px;
+  margin-top: 5px;
+  /*triangle*/
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+}
+.inactive .sort-icon {
+  /*finish triangle*/
+  border-top: 8px solid #E6E6E6;
+}
+.asc.active .sort-icon {
+  /*finish triangle*/
+  border-bottom: 8px solid #999;
+}
+.desc.active .sort-icon {
+  /*finish triangle*/
+  border-top: 8px solid #999;
+}
+</style></head>
+  <body onLoad="init()">
+    <script>/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+
+function toArray(iter) {
+    if (iter === null) {
+        return null;
+    }
+    return Array.prototype.slice.call(iter);
+}
+
+function find(selector, elem) { // eslint-disable-line no-redeclare
+    if (!elem) {
+        elem = document;
+    }
+    return elem.querySelector(selector);
+}
+
+function findAll(selector, elem) {
+    if (!elem) {
+        elem = document;
+    }
+    return toArray(elem.querySelectorAll(selector));
+}
+
+function sortColumn(elem) {
+    toggleSortStates(elem);
+    const colIndex = toArray(elem.parentNode.childNodes).indexOf(elem);
+    let key;
+    if (elem.classList.contains('result')) {
+        key = keyResult;
+    } else if (elem.classList.contains('links')) {
+        key = keyLink;
+    } else {
+        key = keyAlpha;
+    }
+    sortTable(elem, key(colIndex));
+}
+
+function showAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(showExtras);
+}
+
+function hideAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(hideExtras);
+}
+
+function showExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.remove('collapsed');
+    expandcollapse.classList.remove('expander');
+    expandcollapse.classList.add('collapser');
+}
+
+function hideExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.add('collapsed');
+    expandcollapse.classList.remove('collapser');
+    expandcollapse.classList.add('expander');
+}
+
+function showFilters() {
+    const filterItems = document.getElementsByClassName('filter');
+    for (let i = 0; i < filterItems.length; i++)
+        filterItems[i].hidden = false;
+}
+
+function addCollapse() {
+    // Add links for show/hide all
+    const resulttable = find('table#results-table');
+    const showhideall = document.createElement('p');
+    showhideall.innerHTML = '<a href="javascript:showAllExtras()">Show all details</a> / ' +
+                            '<a href="javascript:hideAllExtras()">Hide all details</a>';
+    resulttable.parentElement.insertBefore(showhideall, resulttable);
+
+    // Add show/hide link to each result
+    findAll('.col-result').forEach(function(elem) {
+        const collapsed = getQueryParameter('collapsed') || 'Passed';
+        const extras = elem.parentNode.nextElementSibling;
+        const expandcollapse = document.createElement('span');
+        if (extras.classList.contains('collapsed')) {
+            expandcollapse.classList.add('expander');
+        } else if (collapsed.includes(elem.innerHTML)) {
+            extras.classList.add('collapsed');
+            expandcollapse.classList.add('expander');
+        } else {
+            expandcollapse.classList.add('collapser');
+        }
+        elem.appendChild(expandcollapse);
+
+        elem.addEventListener('click', function(event) {
+            if (event.currentTarget.parentNode.nextElementSibling.classList.contains('collapsed')) {
+                showExtras(event.currentTarget);
+            } else {
+                hideExtras(event.currentTarget);
+            }
+        });
+    });
+}
+
+function getQueryParameter(name) {
+    const match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+    return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
+}
+
+function init () { // eslint-disable-line no-unused-vars
+    resetSortHeaders();
+
+    addCollapse();
+
+    showFilters();
+
+    sortColumn(find('.initial-sort'));
+
+    findAll('.sortable').forEach(function(elem) {
+        elem.addEventListener('click',
+            function() {
+                sortColumn(elem);
+            }, false);
+    });
+}
+
+function sortTable(clicked, keyFunc) {
+    const rows = findAll('.results-table-row');
+    const reversed = !clicked.classList.contains('asc');
+    const sortedRows = sort(rows, keyFunc, reversed);
+    /* Whole table is removed here because browsers acts much slower
+     * when appending existing elements.
+     */
+    const thead = document.getElementById('results-table-head');
+    document.getElementById('results-table').remove();
+    const parent = document.createElement('table');
+    parent.id = 'results-table';
+    parent.appendChild(thead);
+    sortedRows.forEach(function(elem) {
+        parent.appendChild(elem);
+    });
+    document.getElementsByTagName('BODY')[0].appendChild(parent);
+}
+
+function sort(items, keyFunc, reversed) {
+    const sortArray = items.map(function(item, i) {
+        return [keyFunc(item), i];
+    });
+
+    sortArray.sort(function(a, b) {
+        const keyA = a[0];
+        const keyB = b[0];
+
+        if (keyA == keyB) return 0;
+
+        if (reversed) {
+            return keyA < keyB ? 1 : -1;
+        } else {
+            return keyA > keyB ? 1 : -1;
+        }
+    });
+
+    return sortArray.map(function(item) {
+        const index = item[1];
+        return items[index];
+    });
+}
+
+function keyAlpha(colIndex) {
+    return function(elem) {
+        return elem.childNodes[1].childNodes[colIndex].firstChild.data.toLowerCase();
+    };
+}
+
+function keyLink(colIndex) {
+    return function(elem) {
+        const dataCell = elem.childNodes[1].childNodes[colIndex].firstChild;
+        return dataCell == null ? '' : dataCell.innerText.toLowerCase();
+    };
+}
+
+function keyResult(colIndex) {
+    return function(elem) {
+        const strings = ['Error', 'Failed', 'Rerun', 'XFailed', 'XPassed',
+            'Skipped', 'Passed'];
+        return strings.indexOf(elem.childNodes[1].childNodes[colIndex].firstChild.data);
+    };
+}
+
+function resetSortHeaders() {
+    findAll('.sort-icon').forEach(function(elem) {
+        elem.parentNode.removeChild(elem);
+    });
+    findAll('.sortable').forEach(function(elem) {
+        const icon = document.createElement('div');
+        icon.className = 'sort-icon';
+        icon.textContent = 'vvv';
+        elem.insertBefore(icon, elem.firstChild);
+        elem.classList.remove('desc', 'active');
+        elem.classList.add('asc', 'inactive');
+    });
+}
+
+function toggleSortStates(elem) {
+    //if active, toggle between asc and desc
+    if (elem.classList.contains('active')) {
+        elem.classList.toggle('asc');
+        elem.classList.toggle('desc');
+    }
+
+    //if inactive, reset all other functions and add ascending active
+    if (elem.classList.contains('inactive')) {
+        resetSortHeaders();
+        elem.classList.remove('inactive');
+        elem.classList.add('active');
+    }
+}
+
+function isAllRowsHidden(value) {
+    return value.hidden == false;
+}
+
+function filterTable(elem) { // eslint-disable-line no-unused-vars
+    const outcomeAtt = 'data-test-result';
+    const outcome = elem.getAttribute(outcomeAtt);
+    const classOutcome = outcome + ' results-table-row';
+    const outcomeRows = document.getElementsByClassName(classOutcome);
+
+    for(let i = 0; i < outcomeRows.length; i++){
+        outcomeRows[i].hidden = !elem.checked;
+    }
+
+    const rows = findAll('.results-table-row').filter(isAllRowsHidden);
+    const allRowsHidden = rows.length == 0 ? true : false;
+    const notFoundMessage = document.getElementById('not-found-message');
+    notFoundMessage.hidden = !allRowsHidden;
+}
+</script>
+    <h1>report.html</h1>
+    <p>Report generated on 20-Sep-2022 at 17:10:37 by <a href="https://pypi.python.org/pypi/pytest-html">pytest-html</a> v3.1.1</p>
+    <h2>Environment</h2>
+    <table id="environment">
+      <tr>
+        <td>JAVA_HOME</td>
+        <td>/usr/lib/jvm/jdk-11.0.16.1</td></tr>
+      <tr>
+        <td>Packages</td>
+        <td>{"pluggy": "1.0.0", "py": "1.11.0", "pytest": "7.0.1"}</td></tr>
+      <tr>
+        <td>Platform</td>
+        <td>Linux-4.15.0-142-generic-x86_64-with-Ubuntu-16.04-xenial</td></tr>
+      <tr>
+        <td>Plugins</td>
+        <td>{"allure-pytest": "2.10.0", "html": "3.1.1", "metadata": "1.11.0"}</td></tr>
+      <tr>
+        <td>Python</td>
+        <td>3.6.13</td></tr></table>
+    <h2>Summary</h2>
+    <p>3 tests ran in 4.55 seconds. </p>
+    <p class="filter" hidden="true">(Un)check the boxes to filter the results.</p><input checked="true" class="filter" data-test-result="passed" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="passed">2 passed</span>, <input checked="true" class="filter" data-test-result="skipped" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="skipped">0 skipped</span>, <input checked="true" class="filter" data-test-result="failed" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="failed">1 failed</span>, <input checked="true" class="filter" data-test-result="error" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="error">0 errors</span>, <input checked="true" class="filter" data-test-result="xfailed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xfailed">0 expected failures</span>, <input checked="true" class="filter" data-test-result="xpassed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xpassed">0 unexpected passes</span>
+    <h2>Results</h2>
+    <table id="results-table">
+      <thead id="results-table-head">
+        <tr>
+          <th class="sortable result initial-sort" col="result">Result</th>
+          <th class="sortable" col="name">Test</th>
+          <th class="sortable" col="duration">Duration</th>
+          <th class="sortable links" col="links">Links</th></tr>
+        <tr hidden="true" id="not-found-message">
+          <th colspan="4">No results found. Try to check the filters</th></tr></thead>
+      <tbody class="failed results-table-row">
+        <tr>
+          <td class="col-result">Failed</td>
+          <td class="col-name">tests/test_memory.py::test_memory</td>
+          <td class="col-duration">1.46</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">connect_host = None<br/><br/>    @pytest.mark.cli<br/>    def test_memory(connect_host):<br/>        logging.getLogger().info(&#x27;Log inside a test_memory function!&#x27;)<br/>    <br/>        with open(&#x27;ParshuramVM.txt&#x27;) as f:<br/>            line = eval(f.read())<br/>            memory_used_percent = line.get(&#x27;memory_used_percent&#x27;)<br/>    <br/>&gt;       assert memory_used_percent &lt;= 79<br/><span class="error">E       assert 82.1 &lt;= 79</span><br/><br/>tests/test_memory.py:13: AssertionError<br/> -------------------------------Captured log setup------------------------------- <br/>DEBUG    paramiko.transport:transport.py:1819 starting thread (client mode): 0x21cb2eb8
+DEBUG    paramiko.transport:transport.py:1819 Local version/idstring: SSH-2.0-paramiko_2.8.0
+DEBUG    paramiko.transport:transport.py:1819 Remote version/idstring: SSH-2.0-OpenSSH_7.2p2 Ubuntu-4ubuntu2.10
+INFO     paramiko.transport:transport.py:1819 Connected (version 2.0, client OpenSSH_7.2p2)
+DEBUG    paramiko.transport:transport.py:1819 kex algos:[&#x27;curve25519-sha256@libssh.org&#x27;, &#x27;ecdh-sha2-nistp256&#x27;, &#x27;ecdh-sha2-nistp384&#x27;, &#x27;ecdh-sha2-nistp521&#x27;, &#x27;diffie-hellman-group-exchange-sha256&#x27;, &#x27;diffie-hellman-group14-sha1&#x27;] server key:[&#x27;ssh-rsa&#x27;, &#x27;rsa-sha2-512&#x27;, &#x27;rsa-sha2-256&#x27;, &#x27;ecdsa-sha2-nistp256&#x27;, &#x27;ssh-ed25519&#x27;] client encrypt:[&#x27;chacha20-poly1305@openssh.com&#x27;, &#x27;aes128-ctr&#x27;, &#x27;aes192-ctr&#x27;, &#x27;aes256-ctr&#x27;, &#x27;aes128-gcm@openssh.com&#x27;, &#x27;aes256-gcm@openssh.com&#x27;] server encrypt:[&#x27;chacha20-poly1305@openssh.com&#x27;, &#x27;aes128-ctr&#x27;, &#x27;aes192-ctr&#x27;, &#x27;aes256-ctr&#x27;, &#x27;aes128-gcm@openssh.com&#x27;, &#x27;aes256-gcm@openssh.com&#x27;] client mac:[&#x27;umac-64-etm@openssh.com&#x27;, &#x27;umac-128-etm@openssh.com&#x27;, &#x27;hmac-sha2-256-etm@openssh.com&#x27;, &#x27;hmac-sha2-512-etm@openssh.com&#x27;, &#x27;hmac-sha1-etm@openssh.com&#x27;, &#x27;umac-64@openssh.com&#x27;, &#x27;umac-128@openssh.com&#x27;, &#x27;hmac-sha2-256&#x27;, &#x27;hmac-sha2-512&#x27;, &#x27;hmac-sha1&#x27;] server mac:[&#x27;umac-64-etm@openssh.com&#x27;, &#x27;umac-128-etm@openssh.com&#x27;, &#x27;hmac-sha2-256-etm@openssh.com&#x27;, &#x27;hmac-sha2-512-etm@openssh.com&#x27;, &#x27;hmac-sha1-etm@openssh.com&#x27;, &#x27;umac-64@openssh.com&#x27;, &#x27;umac-128@openssh.com&#x27;, &#x27;hmac-sha2-256&#x27;, &#x27;hmac-sha2-512&#x27;, &#x27;hmac-sha1&#x27;] client compress:[&#x27;none&#x27;, &#x27;zlib@openssh.com&#x27;] server compress:[&#x27;none&#x27;, &#x27;zlib@openssh.com&#x27;] client lang:[&#x27;&#x27;] server lang:[&#x27;&#x27;] kex follows?False
+DEBUG    paramiko.transport:transport.py:1819 Kex agreed: curve25519-sha256@libssh.org
+DEBUG    paramiko.transport:transport.py:1819 HostKey agreed: ssh-ed25519
+DEBUG    paramiko.transport:transport.py:1819 Cipher agreed: aes128-ctr
+DEBUG    paramiko.transport:transport.py:1819 MAC agreed: hmac-sha2-256
+DEBUG    paramiko.transport:transport.py:1819 Compression agreed: none
+DEBUG    paramiko.transport:transport.py:1819 kex engine KexCurve25519 specified hash_algo &lt;built-in function openssl_sha256&gt;
+DEBUG    paramiko.transport:transport.py:1819 Switch to new keys ...
+DEBUG    paramiko.transport:transport.py:1819 Adding ssh-ed25519 host key for 192.168.0.4: b&#x27;384453ef8ebcde39b5917845c533063e&#x27;
+DEBUG    paramiko.transport:transport.py:1819 userauth is OK
+INFO     paramiko.transport:transport.py:1819 Authentication (password) successful!
+DEBUG    paramiko.transport:channel.py:1212 [chan 0] Max packet in: 32768 bytes
+DEBUG    paramiko.transport:transport.py:1819 Received global request &quot;hostkeys-00@openssh.com&quot;
+DEBUG    paramiko.transport:transport.py:1819 Rejecting &quot;hostkeys-00@openssh.com&quot; global request from server.
+DEBUG    paramiko.transport:channel.py:1212 [chan 0] Max packet out: 32768 bytes
+DEBUG    paramiko.transport:transport.py:1819 Secsh channel 0 opened.
+DEBUG    paramiko.transport:channel.py:1212 [chan 0] Sesch channel 0 request ok
+INFO     root:conftest.py:24 info: {&#x27;disk_used_percent&#x27;: 56.2, &#x27;memory_used_percent&#x27;: 82.1, &#x27;cpu_usage&#x27;: 13.0, &#x27;timestamp&#x27;: 1663674035.338166}
+
+DEBUG    paramiko.transport:channel.py:1212 [chan 0] EOF received (0)
+DEBUG    paramiko.transport:channel.py:1212 [chan 0] EOF sent (0)
+DEBUG    paramiko.transport:transport.py:1819 Dropping user packet because connection is dead.<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     root:test_memory.py:7 Log inside a test_memory function!<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests/test_CPU.py::test_CPU</td>
+          <td class="col-duration">1.45</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -------------------------------Captured log setup------------------------------- <br/>DEBUG    paramiko.transport:transport.py:1819 starting thread (client mode): 0x21d8d7f0
+DEBUG    paramiko.transport:transport.py:1819 Local version/idstring: SSH-2.0-paramiko_2.8.0
+DEBUG    paramiko.transport:transport.py:1819 Remote version/idstring: SSH-2.0-OpenSSH_7.2p2 Ubuntu-4ubuntu2.10
+INFO     paramiko.transport:transport.py:1819 Connected (version 2.0, client OpenSSH_7.2p2)
+DEBUG    paramiko.transport:transport.py:1819 kex algos:[&#x27;curve25519-sha256@libssh.org&#x27;, &#x27;ecdh-sha2-nistp256&#x27;, &#x27;ecdh-sha2-nistp384&#x27;, &#x27;ecdh-sha2-nistp521&#x27;, &#x27;diffie-hellman-group-exchange-sha256&#x27;, &#x27;diffie-hellman-group14-sha1&#x27;] server key:[&#x27;ssh-rsa&#x27;, &#x27;rsa-sha2-512&#x27;, &#x27;rsa-sha2-256&#x27;, &#x27;ecdsa-sha2-nistp256&#x27;, &#x27;ssh-ed25519&#x27;] client encrypt:[&#x27;chacha20-poly1305@openssh.com&#x27;, &#x27;aes128-ctr&#x27;, &#x27;aes192-ctr&#x27;, &#x27;aes256-ctr&#x27;, &#x27;aes128-gcm@openssh.com&#x27;, &#x27;aes256-gcm@openssh.com&#x27;] server encrypt:[&#x27;chacha20-poly1305@openssh.com&#x27;, &#x27;aes128-ctr&#x27;, &#x27;aes192-ctr&#x27;, &#x27;aes256-ctr&#x27;, &#x27;aes128-gcm@openssh.com&#x27;, &#x27;aes256-gcm@openssh.com&#x27;] client mac:[&#x27;umac-64-etm@openssh.com&#x27;, &#x27;umac-128-etm@openssh.com&#x27;, &#x27;hmac-sha2-256-etm@openssh.com&#x27;, &#x27;hmac-sha2-512-etm@openssh.com&#x27;, &#x27;hmac-sha1-etm@openssh.com&#x27;, &#x27;umac-64@openssh.com&#x27;, &#x27;umac-128@openssh.com&#x27;, &#x27;hmac-sha2-256&#x27;, &#x27;hmac-sha2-512&#x27;, &#x27;hmac-sha1&#x27;] server mac:[&#x27;umac-64-etm@openssh.com&#x27;, &#x27;umac-128-etm@openssh.com&#x27;, &#x27;hmac-sha2-256-etm@openssh.com&#x27;, &#x27;hmac-sha2-512-etm@openssh.com&#x27;, &#x27;hmac-sha1-etm@openssh.com&#x27;, &#x27;umac-64@openssh.com&#x27;, &#x27;umac-128@openssh.com&#x27;, &#x27;hmac-sha2-256&#x27;, &#x27;hmac-sha2-512&#x27;, &#x27;hmac-sha1&#x27;] client compress:[&#x27;none&#x27;, &#x27;zlib@openssh.com&#x27;] server compress:[&#x27;none&#x27;, &#x27;zlib@openssh.com&#x27;] client lang:[&#x27;&#x27;] server lang:[&#x27;&#x27;] kex follows?False
+DEBUG    paramiko.transport:transport.py:1819 Kex agreed: curve25519-sha256@libssh.org
+DEBUG    paramiko.transport:transport.py:1819 HostKey agreed: ssh-ed25519
+DEBUG    paramiko.transport:transport.py:1819 Cipher agreed: aes128-ctr
+DEBUG    paramiko.transport:transport.py:1819 MAC agreed: hmac-sha2-256
+DEBUG    paramiko.transport:transport.py:1819 Compression agreed: none
+DEBUG    paramiko.transport:transport.py:1819 kex engine KexCurve25519 specified hash_algo &lt;built-in function openssl_sha256&gt;
+DEBUG    paramiko.transport:transport.py:1819 Switch to new keys ...
+DEBUG    paramiko.transport:transport.py:1819 Adding ssh-ed25519 host key for 192.168.0.4: b&#x27;384453ef8ebcde39b5917845c533063e&#x27;
+DEBUG    paramiko.transport:transport.py:1819 userauth is OK
+INFO     paramiko.transport:transport.py:1819 Authentication (password) successful!
+DEBUG    paramiko.transport:channel.py:1212 [chan 0] Max packet in: 32768 bytes
+DEBUG    paramiko.transport:transport.py:1819 Received global request &quot;hostkeys-00@openssh.com&quot;
+DEBUG    paramiko.transport:transport.py:1819 Rejecting &quot;hostkeys-00@openssh.com&quot; global request from server.
+DEBUG    paramiko.transport:channel.py:1212 [chan 0] Max packet out: 32768 bytes
+DEBUG    paramiko.transport:transport.py:1819 Secsh channel 0 opened.
+DEBUG    paramiko.transport:channel.py:1212 [chan 0] Sesch channel 0 request ok
+INFO     root:conftest.py:24 info: {&#x27;memory_used_percent&#x27;: 82.1, &#x27;disk_used_percent&#x27;: 56.2, &#x27;cpu_usage&#x27;: 14.0, &#x27;timestamp&#x27;: 1663674032.366932}
+
+DEBUG    paramiko.transport:channel.py:1212 [chan 0] EOF received (0)
+DEBUG    paramiko.transport:channel.py:1212 [chan 0] EOF sent (0)
+DEBUG    paramiko.transport:transport.py:1819 Dropping user packet because connection is dead.<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     root:test_CPU.py:7 Log inside a test_CPU function!<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests/test_disk.py::test_disk</td>
+          <td class="col-duration">1.50</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -------------------------------Captured log setup------------------------------- <br/>DEBUG    paramiko.transport:transport.py:1819 starting thread (client mode): 0x21d8d390
+DEBUG    paramiko.transport:transport.py:1819 Local version/idstring: SSH-2.0-paramiko_2.8.0
+DEBUG    paramiko.transport:transport.py:1819 Remote version/idstring: SSH-2.0-OpenSSH_7.2p2 Ubuntu-4ubuntu2.10
+INFO     paramiko.transport:transport.py:1819 Connected (version 2.0, client OpenSSH_7.2p2)
+DEBUG    paramiko.transport:transport.py:1819 kex algos:[&#x27;curve25519-sha256@libssh.org&#x27;, &#x27;ecdh-sha2-nistp256&#x27;, &#x27;ecdh-sha2-nistp384&#x27;, &#x27;ecdh-sha2-nistp521&#x27;, &#x27;diffie-hellman-group-exchange-sha256&#x27;, &#x27;diffie-hellman-group14-sha1&#x27;] server key:[&#x27;ssh-rsa&#x27;, &#x27;rsa-sha2-512&#x27;, &#x27;rsa-sha2-256&#x27;, &#x27;ecdsa-sha2-nistp256&#x27;, &#x27;ssh-ed25519&#x27;] client encrypt:[&#x27;chacha20-poly1305@openssh.com&#x27;, &#x27;aes128-ctr&#x27;, &#x27;aes192-ctr&#x27;, &#x27;aes256-ctr&#x27;, &#x27;aes128-gcm@openssh.com&#x27;, &#x27;aes256-gcm@openssh.com&#x27;] server encrypt:[&#x27;chacha20-poly1305@openssh.com&#x27;, &#x27;aes128-ctr&#x27;, &#x27;aes192-ctr&#x27;, &#x27;aes256-ctr&#x27;, &#x27;aes128-gcm@openssh.com&#x27;, &#x27;aes256-gcm@openssh.com&#x27;] client mac:[&#x27;umac-64-etm@openssh.com&#x27;, &#x27;umac-128-etm@openssh.com&#x27;, &#x27;hmac-sha2-256-etm@openssh.com&#x27;, &#x27;hmac-sha2-512-etm@openssh.com&#x27;, &#x27;hmac-sha1-etm@openssh.com&#x27;, &#x27;umac-64@openssh.com&#x27;, &#x27;umac-128@openssh.com&#x27;, &#x27;hmac-sha2-256&#x27;, &#x27;hmac-sha2-512&#x27;, &#x27;hmac-sha1&#x27;] server mac:[&#x27;umac-64-etm@openssh.com&#x27;, &#x27;umac-128-etm@openssh.com&#x27;, &#x27;hmac-sha2-256-etm@openssh.com&#x27;, &#x27;hmac-sha2-512-etm@openssh.com&#x27;, &#x27;hmac-sha1-etm@openssh.com&#x27;, &#x27;umac-64@openssh.com&#x27;, &#x27;umac-128@openssh.com&#x27;, &#x27;hmac-sha2-256&#x27;, &#x27;hmac-sha2-512&#x27;, &#x27;hmac-sha1&#x27;] client compress:[&#x27;none&#x27;, &#x27;zlib@openssh.com&#x27;] server compress:[&#x27;none&#x27;, &#x27;zlib@openssh.com&#x27;] client lang:[&#x27;&#x27;] server lang:[&#x27;&#x27;] kex follows?False
+DEBUG    paramiko.transport:transport.py:1819 Kex agreed: curve25519-sha256@libssh.org
+DEBUG    paramiko.transport:transport.py:1819 HostKey agreed: ssh-ed25519
+DEBUG    paramiko.transport:transport.py:1819 Cipher agreed: aes128-ctr
+DEBUG    paramiko.transport:transport.py:1819 MAC agreed: hmac-sha2-256
+DEBUG    paramiko.transport:transport.py:1819 Compression agreed: none
+DEBUG    paramiko.transport:transport.py:1819 kex engine KexCurve25519 specified hash_algo &lt;built-in function openssl_sha256&gt;
+DEBUG    paramiko.transport:transport.py:1819 Switch to new keys ...
+DEBUG    paramiko.transport:transport.py:1819 Adding ssh-ed25519 host key for 192.168.0.4: b&#x27;384453ef8ebcde39b5917845c533063e&#x27;
+DEBUG    paramiko.transport:transport.py:1819 userauth is OK
+INFO     paramiko.transport:transport.py:1819 Authentication (password) successful!
+DEBUG    paramiko.transport:channel.py:1212 [chan 0] Max packet in: 32768 bytes
+DEBUG    paramiko.transport:transport.py:1819 Received global request &quot;hostkeys-00@openssh.com&quot;
+DEBUG    paramiko.transport:transport.py:1819 Rejecting &quot;hostkeys-00@openssh.com&quot; global request from server.
+DEBUG    paramiko.transport:channel.py:1212 [chan 0] Max packet out: 32768 bytes
+DEBUG    paramiko.transport:transport.py:1819 Secsh channel 0 opened.
+DEBUG    paramiko.transport:channel.py:1212 [chan 0] Sesch channel 0 request ok
+INFO     root:conftest.py:24 info: {&#x27;disk_used_percent&#x27;: 56.2, &#x27;memory_used_percent&#x27;: 82.1, &#x27;cpu_usage&#x27;: 12.0, &#x27;timestamp&#x27;: 1663674033.8820078}
+
+DEBUG    paramiko.transport:channel.py:1212 [chan 0] EOF received (0)
+DEBUG    paramiko.transport:transport.py:1819 EOF in transport thread
+DEBUG    paramiko.transport:channel.py:1212 [chan 0] EOF sent (0)
+DEBUG    paramiko.transport:transport.py:1819 Dropping user packet because connection is dead.<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     root:test_disk.py:7 Log inside a test_disk function!<br/></div></td></tr></tbody></table></body></html>

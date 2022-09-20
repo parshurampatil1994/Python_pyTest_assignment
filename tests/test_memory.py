@@ -10,4 +10,4 @@ def test_memory(connect_host):
         line = eval(f.read())
         memory_used_percent = line.get('memory_used_percent')
 
-    assert memory_used_percent <= 79
+    assert memory_used_percent <= 85
