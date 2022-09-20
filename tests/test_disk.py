@@ -3,8 +3,7 @@ import logging
 
 
 @pytest.mark.cli
-def test_disk(caplog):
-    caplog.set_level(logging.INFO)
+def test_disk(connect_host):
     logging.getLogger().info('Log inside a test_disk function!')
 
     with open('ParshuramVM.txt') as f:

@@ -1,10 +1,12 @@
+import pytest
 import paramiko
 import logging
 
 
+@pytest.fixture(autouse = True)
 def connect_host():
     try:
-        hostname = '192.168.0.5'
+        hostname = '192.168.0.4'
         port = 22
         username = 'parshuram22'
         password = '123@Pp'
@@ -16,28 +18,12 @@ def connect_host():
         cmd = 'python3 Desktop/check_system_data.py'
         stdin, stdout, stderr = client.exec_command(cmd)
 
-        with open('ParshuramVM.txt', 'w') as f:
+        with open('ParshuramVM.txt', 'w') as file1:
             for i in stdout:
-                f.write(i)
+                file1.write(i)
                 logging.getLogger().info('info: ' + str(i))
 
         client.close()
 
     except Exception as e:
          return e
-
-
-connect_host()
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -1,1 +1,0 @@
-[32mINFO    [0m root:test_disk.py:8 Log inside a test_disk function!

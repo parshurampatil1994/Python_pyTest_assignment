@@ -3,8 +3,7 @@ import logging
 
 
 @pytest.mark.cli
-def test_CPU(caplog):
-    caplog.set_level(logging.INFO)
+def test_CPU(connect_host):
     logging.getLogger().info('Log inside a test_CPU function!')
 
     with open('ParshuramVM.txt') as f:
