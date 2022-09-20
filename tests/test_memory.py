@@ -3,7 +3,7 @@ import logging
 
 
 @pytest.mark.cli
-def test_memory(connect_host):
+def test_memory():
     logging.getLogger().info('Log inside a test_memory function!')
 
     with open('ParshuramVM.txt') as f:
