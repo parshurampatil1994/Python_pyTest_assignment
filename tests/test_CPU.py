@@ -11,3 +11,5 @@ def test_CPU():
         cpu_usage = line.get('cpu_usage')
 
     assert cpu_usage <= 90
+
+
